@@ -41,17 +41,27 @@ class Owner:
 #
 class Account:
     def __init__(self, owner, acc_num, acc_type, balance =0):
+        self.connection = Connection()
+        self.cursor = self.connection.cursor
         self.owner = owner
         self.acc_type = acc_type
         self.acc_num =acc_num    
         self.balance = balance
     
-    def Withdraw(self, amount):
-        if self.balance < amount:
+    def Withdraw(self,to_acc_num, amount):
+        self.cursor.execute(
+            "SELECT 1 FROM accounts WHERE acc_number =", (to_acc_num)
+        )
+        if self.execute.fetchone():
             return False
-        else:
-            self.balance-=amount
-            return True
+        try:
+            self.cursor.execute(
+                "UPDATE acco8unts SET acc_balance - ? WHERE acc_number = ?", (amount, to_acc_num)
+            )
+            self.connection.commit()
+        except sqlite3.Error as e:
+            raise Exception(str(e))
+
         
     def Deposit(self,amount):
         self.balance+= amount
@@ -72,10 +82,10 @@ class Account:
             self.cursor.execute(
                 "UPDATE accounts SET balance = balance + ? WHERE account_number =?",(amount, rec_acc_num)
             )
-            self.conn.commit()
+            self.connection.commit()
             return True 
         except sqlite3.Error:
-            self.conn.rollback()
+            self.connection.rollback()
             return False
 
 class Bank:
@@ -202,24 +212,30 @@ class AccountFormHandler():
         ttk.Label(self.form, text="Choose Account : ").grid(column=0, row=3)
         ttk.Radiobutton(self.form, variable=self.acc_type, value="Checking account", text="Checking Account").grid(column=0, row=4)
         ttk.Radiobutton(self.form, variable=self.acc_type, value="Savings account", text="Savings Account").grid(column=0, row=5)
+
+
+        ttk.Label(self.form, text="First deposit amount: ").grid(column=0, row=6)
+        self.first_depo = ttk.Entry(self.form)
+        self.first_depo.grid(column=1, row=6)
         
-        ttk.Button(self.form, command=self.submit, text="Submit").grid(column=0, row=6)
+        ttk.Button(self.form, command=self.submit, text="Submit").grid(column=0, row=7)
 
         self.status_bar = ttk.Label(self.form, text="")
-        self.status_bar.grid(column=0, row=8, columnspan=2)
+        self.status_bar.grid(column=0, row=10, columnspan=2)
 
     def submit(self):
         Fname = self.name_entry.get()
         PiD = self.id_entry.get()
         acc_type = self.acc_type.get()
+        first_depo = self.first_depo.get()
 
         if not all([Fname, PiD, acc_type]):
             self.status_show("Enter all details", "red")
             return False
         try :
             owner = Owner(Fname, PiD)
-            acc_num = self.bank.create_account(owner, acc_type)
-            self.status_show(f"Account{acc_num}created for{Fname}", "green")
+            acc_num = self.bank.create_account(owner, acc_type, first_depo)
+            self.status_show(f"Account{acc_num}created for{Fname} account balance is {first_depo}", "green")
             self.clearForm()
 
         except accountexistserror:
@@ -234,7 +250,43 @@ class AccountFormHandler():
         self.name_entry.delete(0, 'end')
         self.id_entry.delete(0, 'end')
         self.acc_type.set('')
+        self.first_depo.delete(0, 'end')
         self.form.after(3000, lambda: self.status_bar.config(text=""))
+
+class WithdrawFormHandler():
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Withdrawals")
+        self.account = Account
+        self.withdrawal_info()
+        self.root.mainloop()
+
+    def withdrawal_info(self):
+        self.form = ttk.Frame(self.root, padding=20)
+        self.form.grid()
+
+        ttk.Label(self.form, text="Withdrawals").grid(column=0, row=1)
+
+        ttk.Label(self.form, text="Account to withdraw from :")
+        self.with_from_account = ttk.Entry(self.form)
+        self.with_from_account.grid(column=0, row=2)
+
+        ttk.Label(self.form, text="Amount to withdraw : ")
+        self.with_amount = ttk.Entry(self.form)
+        self.with_amount.grid(column=0, row=3)
+
+        ttk.Button(self.form, text="withdraw").grid(column=0, row=4)
+
+        self.show_status = ttk.Label(self.form, text="")
+        self.show_status.grid(column=0, row= 6, columnspan=2)
+
+    def with_dr(self):
+        account_number = self.with_from_account.get()
+        amount = self.with_amount.get()
+
+        if not all([account_number, amount]):
+            self.show_withdraw_status("Fill the dets","red")
+            
 
 if __name__ == "__main__":
     main = mainpage()
