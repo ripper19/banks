@@ -56,7 +56,7 @@ class Account:
             return False
         try:
             self.cursor.execute(
-                "UPDATE acco8unts SET acc_balance - ? WHERE acc_number = ?", (amount, to_acc_num)
+                "UPDATE accounts SET acc_balance - ? WHERE acc_number = ?", (amount, to_acc_num)
             )
             self.connection.commit()
         except sqlite3.Error as e:
